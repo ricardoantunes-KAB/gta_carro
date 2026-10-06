@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-PT" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KaBuM! Grand Theft Delivery - Sobreviva 25 Segundos</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.cdnfonts.com/css/pricedown');
+    </style>
+    
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-kabum': '#FF6500',
+                        'brand-kabum-dark': '#CC5200',
+                        'gta-pink': '#FF007F',
+                        'gta-cyan': '#00FFFF',
+                        'gta-green': '#54B435',
+                        'city-dark': '#0A0B0E',
+                        'city-accent': '#1A1C23'
+                    },
+                    fontFamily: {
+                        'outfit': ['Outfit', 'sans-serif'],
+                        'gta': ['Pricedown', 'Impact', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0A0B0E;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Estilos do Canvas e Overlays */
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1200px; /* Hotsite maior */
+            margin: 0 auto;
+            aspect-ratio: 16/9;
+            background-color: #1a1a1a;
+            border: 6px solid #FF6500;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(255, 101, 0, 0.3), 0 0 100px rgba(255, 0, 127, 0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: optimizeSpeed; 
+        }
+
+        /* Interfaces Overlay */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10, 11, 14, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden { display: none !important; }
+
+        /* HUD GTA Style */
+        #hud {
+            position: absolute;
+            top: 20px; left: 30px; right: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-timer {
+            font-family: 'Pricedown', sans-serif;
+            font-size: 4.5rem;
+            color: #FF007F; /* Pink GTA VI */
+            text-shadow: 3px 3px 0 #000, 0 0 15px rgba(255,0,127,0.5);
+            line-height: 1;
+            margin-top: -10px;
+        }
+
+        .wanted-stars {
+            font-size: 2.5rem;
+            color: #FFD700;
+            text-shadow: 0 0 10px #FFD700;
+            letter-spacing: 5px;
+            display: flex;
+            gap: 4px;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
+        }
+
+        .health-bar-container {
+            width: 250px;
+            height: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 3px solid #000;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        #health-bar-fill {
+            width: 100%;
+            height: 100%;
+            background: #54B435;
+            transition: width 0.2s ease-out, background-color 0.2s;
+        }
+
+        /* Textos Centrais (Wasted / Passed) */
+        .center-msg {
+            font-family: 'Pricedown', sans-serif;
+            font-size: 7rem;
+            text-align: center;
+            text-shadow: 4px 4px 0 #000;
+            text-transform: uppercase;
+        }
+        .wasted { color: #C8102E; }
+        .passed { color: #54B435; }
+
+        /* Controlos Touch para Mobile */
+        #touch-controls {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 0 20px;
+            justify-content: space-between;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            #touch-controls { display: flex; }
+            .health-bar-container { width: 150px; }
+            .hud-timer { font-size: 3rem; }
+            .wanted-stars { font-size: 1.5rem; }
+        }
+
+        .touch-btn {
+            width: 60px; height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 24px; color: white; pointer-events: auto; user-select: none; touch-action: none;
+        }
+        .touch-btn:active { background: rgba(255, 255, 255, 0.5); }
+
+        .car-card { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+        .car-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 25px rgba(255,101,0,0.3); }
+    </style>
+</head>
+<body class="font-outfit antialiased selection:bg-gta-pink selection:text-white">
+
+    <header class="bg-black border-b-[6px] border-brand-kabum sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-[1400px] mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-3xl md:text-4xl font-gta font-bold uppercase tracking-widest text-white mt-2">
+                    KaBuM! <span class="text-brand-kabum">Delivery</span>
+                </h1>
+            </div>
+            <nav class="hidden md:flex space-x-8 text-sm font-bold text-gray-400 uppercase tracking-widest">
+                <a href="#game-section" class="hover:text-gta-cyan transition-colors">Jogar Agora</a>
+                <a href="#rules-section" class="hover:text-gta-pink transition-colors">Regras VIP</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section Vibe GTA VI -->
+        <section class="relative py-20 md:py-28 overflow-hidden bg-gradient-to-br from-brand-kabum via-gta-pink to-blue-900 border-b border-white/10 shadow-inner">
+            <div class="absolute inset-0 bg-black/60 z-0"></div>
+            <!-- Grid overlay -->
+            <div class="absolute inset-0 z-0 opacity-30" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 50px 50px;"></div>
+            
+            <div class="relative max-w-5xl mx-auto px-4 text-center z-10">
+                <h2 class="text-6xl md:text-8xl font-gta font-bold mb-2 uppercase text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 drop-shadow-[0_5px_5px_rgba(0,0,0,1)]">
+                    Sobreviva <span class="text-gta-cyan">25 Segundos</span>
+                </h2>
+                <p class="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
+                    O maior roubo de descontos da cidade. Escolha sua van, fuja da polícia pelas ruas de Vice Ninja e garanta seu prêmio.
+                </p>
+                <a href="#game-section" class="inline-block bg-brand-kabum hover:bg-brand-kabum-dark text-white font-black py-4 px-10 rounded text-xl uppercase tracking-widest transition-transform transform hover:scale-105 shadow-[0_0_20px_rgba(255,101,0,0.6)]">
+                    Iniciar Missão
+                </a>
+            </div>
+        </section>
+
+        <section id="game-section" class="py-16 bg-[#0a0a0a]">
+            <div id="game-wrapper">
+                <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+                <!-- HUD -->
+                <div id="hud" class="hidden">
+                    <div>
+                        <div class="text-sm text-white font-black uppercase tracking-widest mb-1 drop-shadow-md">Nível de Procurado</div>
+                        <div class="wanted-stars">★★★★★</div>
+                    </div>
+                    <div class="text-center absolute left-1/2 transform -translate-x-1/2">
+                        <div class="text-sm text-white font-black uppercase tracking-widest drop-shadow-md">Tempo de Fuga</div>
+                        <div id="timer-display" class="hud-timer">25.0</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-white font-black uppercase tracking-widest mb-1 drop-shadow-md">Blindagem</div>
+                        <div class="health-bar-container float-right">
+                            <div id="health-bar-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controlos Touch -->
+                <div id="touch-controls">
+                    <div class="flex gap-2">
+                        <button class="touch-btn" id="btn-left">◀</button>
+                        <button class="touch-btn" id="btn-right">▶</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="touch-btn bg-red-600/50 border-red-500" id="btn-brake">▼</button>
+                        <button class="touch-btn bg-brand-kabum/80 border-brand-kabum" id="btn-accel">▲</button>
+                    </div>
+                </div>
+
+                <!-- Menu Inicial -->
+                <div id="menu-overlay" class="overlay">
+                    <h3 class="text-5xl md:text-7xl font-gta font-bold mb-4 uppercase text-white tracking-widest drop-shadow-lg text-center mt-10">Escolha seu Veículo</h3>
+                    <p class="text-gray-300 text-lg mb-10 font-bold bg-black/50 px-6 py-2 rounded-full border border-white/10">Usa W A S D ou Setas para pilotar. Cuidado nas curvas!</p>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 px-4 w-full max-w-4xl">
+                        <div class="car-card bg-city-accent border-4 border-brand-kabum rounded-xl p-6 flex flex-col items-center" onclick="startGame('kabum', '#FF6500')">
+                            <div class="w-16 h-24 mb-4 bg-[#FF6500] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">KaBuM!</span>
+                        </div>
+                        <div class="car-card bg-city-accent border-4 border-gta-cyan rounded-xl p-6 flex flex-col items-center" onclick="startGame('logitech', '#00FFFF')">
+                            <div class="w-16 h-24 mb-4 bg-[#00FFFF] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">Vice</span>
+                        </div>
+                        <div class="car-card bg-city-accent border-4 border-blue-600 rounded-xl p-6 flex flex-col items-center" onclick="startGame('intel', '#1D4ED8')">
+                            <div class="w-16 h-24 mb-4 bg-[#1D4ED8] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">FIB</span>
+                        </div>
+                        <div class="car-card bg-city-accent border-4 border-gta-pink rounded-xl p-6 flex flex-col items-center" onclick="startGame('playstation', '#FF007F')">
+                            <div class="w-16 h-24 mb-4 bg-[#FF007F] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">Neon</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Over -->
+                <div id="game-over-overlay" class="overlay hidden bg-red-950/90">
+                    <h3 class="center-msg wasted">WASTED</h3>
+                    <p class="text-gray-300 text-xl mb-10 text-center px-4 font-bold mt-4">A polícia te pegou. O desconto foi apreendido.</p>
+                    <button onclick="showMenu()" class="bg-white text-red-900 font-black py-4 px-10 rounded text-xl uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-xl">
+                        Tentar Novamente
+                    </button>
+                </div>
+
+                <!-- Vitória -->
+                <div id="victory-overlay" class="overlay hidden bg-black/90 border-4 border-gta-green">
+                    <h3 class="center-msg passed">MISSION PASSED!</h3>
+                    <p class="text-gta-green text-2xl mb-8 text-center px-4 font-bold uppercase tracking-widest mt-4">Respeito +</p>
+                    
+                    <div class="bg-city-accent/80 p-8 rounded border-2 border-gta-cyan text-center mb-10 shadow-[0_0_30px_rgba(0,255,255,0.2)]">
+                        <p class="text-gray-400 text-sm uppercase font-bold mb-3 tracking-widest">Prêmio de Fuga</p>
+                        <div class="bg-black text-white font-gta text-5xl px-10 py-4 rounded border border-gray-600 select-all tracking-wider">
+                            KABUM<span class="text-brand-kabum">VI</span>
+                        </div>
+                        <p class="text-gray-500 text-xs mt-4 uppercase font-bold">Copie o código. Use com sabedoria.</p>
+                    </div>
+
+                    <button onclick="showMenu()" class="bg-gta-green text-black font-black py-4 px-10 rounded text-xl uppercase tracking-widest hover:bg-green-400 transition-colors shadow-xl">
+                        Novo Roubo
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Regras -->
+        <section id="rules-section" class="py-20 bg-city-dark border-t border-white/5">
+            <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+                <div class="bg-city-accent p-8 rounded-xl border border-white/5 shadow-lg">
+                    <div class="text-5xl mb-6">🚘</div>
+                    <h4 class="font-black text-2xl mb-3 uppercase tracking-wider text-white">Pilotagem</h4>
+                    <p class="text-gray-400 text-base leading-relaxed">A física está pesada. Planeje suas curvas com antecedência para não bater nos prédios.</p>
+                </div>
+                <div class="bg-city-accent p-8 rounded-xl border border-white/5 shadow-lg">
+                    <div class="text-5xl mb-6">🚔</div>
+                    <h4 class="font-black text-2xl mb-3 uppercase tracking-wider text-gta-pink">5 Estrelas</h4>
+                    <p class="text-gray-400 text-base leading-relaxed">As viaturas do FIB vão tentar amassar a sua van. Desvie e use a cidade a seu favor.</p>
+                </div>
+                <div class="bg-city-accent p-8 rounded-xl border border-white/5 shadow-lg">
+                    <div class="text-5xl mb-6">⏱️</div>
+                    <h4 class="font-black text-2xl mb-3 uppercase tracking-wider text-gta-cyan">25 Segundos</h4>
+                    <p class="text-gray-400 text-base leading-relaxed">Sobreviva ao cronômetro sem destruir o veículo para ganhar o código VIP.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GAME_WIDTH = 1280;
+        const GAME_HEIGHT = 720;
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+
+        // Cidade (Grid System)
+        const WORLD_WIDTH = 4000;
+        const WORLD_HEIGHT = 4000;
+        const BLOCK_SIZE = 450;
+        const STREET_WIDTH = 250;
+
+        let gameState = 'menu';
+        let lastTime = 0;
+        let gameTime = 25.0; // Novo tempo de fuga
+        let reqAnimFrame;
+
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
+
+        window.addEventListener('keydown', (e) => {
+            if(keys.hasOwnProperty(e.key.toLowerCase()) || keys.hasOwnProperty(e.key)) {
+                keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = true;
+                if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if(keys.hasOwnProperty(e.key.toLowerCase()) || keys.hasOwnProperty(e.key)) {
+                keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false;
+            }
+        });
+
+        // Touch setups
+        function setupTouchControl(btnId, keyName) {
+            const btn = document.getElementById(btnId);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            btn.addEventListener('mousedown', (e) => { keys[keyName] = true; });
+            btn.addEventListener('mouseup', (e) => { keys[keyName] = false; });
+        }
+        setupTouchControl('btn-accel', 'w');
+        setupTouchControl('btn-brake', 's');
+        setupTouchControl('btn-left', 'a');
+        setupTouchControl('btn-right', 'd');
+
+        // Classes do Jogo
+        class Car {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.width = 46; this.height = 85;
+                this.color = color;
+                this.angle = -Math.PI / 2;
+                this.speed = 0;
+                this.radius = 38;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Sombra
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(-this.height/2 + 5, -this.width/2 + 5, this.height, this.width);
+
+                // Corpo
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.roundRect(-this.height/2, -this.width/2, this.height, this.width, 4); ctx.fill();
+                
+                // Vidros escuros
+                ctx.fillStyle = "#111";
+                ctx.fillRect(this.height/2 - 25, -this.width/2 + 4, 12, this.width - 8); // Frente
+                ctx.fillRect(-this.height/2 + 10, -this.width/2 + 6, 8, this.width - 12); // Trás
+                
+                // Teto
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.fillRect(-this.height/2 + 20, -this.width/2 + 6, 25, this.width - 12);
+
+                if (this.isEnemy) {
+                    ctx.fillStyle = "#111"; // Pintura da polícia
+                    ctx.fillRect(-this.height/4, -this.width/2 + 2, this.height/2, this.width - 4);
+                    // Sirenes (animadas no render)
+                    let time = performance.now();
+                    ctx.fillStyle = Math.floor(time/150)%2===0 ? "#FF0000" : "#0000FF";
+                    ctx.fillRect(this.height/4, -10, 8, 20);
+                } else {
+                    // Faróis Jogador
+                    ctx.fillStyle = "rgba(255, 255, 150, 0.8)";
+                    ctx.fillRect(this.height/2 - 2, -this.width/2 + 4, 4, 10);
+                    ctx.fillRect(this.height/2 - 2, this.width/2 - 14, 4, 10);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class Player extends Car {
+            constructor(x, y, color) {
+                super(x, y, color);
+                this.isEnemy = false;
+                this.health = 100;
+                // VEÍCULO MAIS LENTO PARA CONTROLE TÁTICO
+                this.maxSpeed = 12.0; 
+                this.acceleration = 0.25; 
+                this.friction = 0.95;
+                this.turnSpeed = 0.06;
+            }
+
+            update(keys) {
+                if (keys.ArrowUp || keys.w) this.speed += this.acceleration;
+                else if (keys.ArrowDown || keys.s) this.speed -= this.acceleration * 0.8;
+                
+                this.speed *= this.friction;
+                this.speed = Math.max(-this.maxSpeed/2, Math.min(this.maxSpeed, this.speed));
+
+                if (Math.abs(this.speed) > 0.5) {
+                    const dir = this.speed > 0 ? 1 : -1;
+                    const turnAmount = this.turnSpeed * Math.min((Math.abs(this.speed) / this.maxSpeed) + 0.3, 1);
+                    if (keys.ArrowLeft || keys.a) this.angle -= turnAmount * dir;
+                    if (keys.ArrowRight || keys.d) this.angle += turnAmount * dir;
+                }
+
+                // Deslizamento (Marcas de pneu)
+                if (Math.abs(this.speed) > 6 && (keys.ArrowLeft || keys.a || keys.ArrowRight || keys.d || keys.s)) {
+                    const bx = this.x - Math.cos(this.angle) * (this.height/2 - 10);
+                    const by = this.y - Math.sin(this.angle) * (this.height/2 - 10);
+                    const wx = Math.cos(this.angle + Math.PI/2) * (this.width/2 - 5);
+                    const wy = Math.sin(this.angle + Math.PI/2) * (this.width/2 - 5);
+                    skidmarks.push({ x1: bx+wx, y1: by+wy, x2: bx-wx, y2: by-wy, life: 1.0 });
+                }
+
+                moveWithCollision(this, this.speed);
+            }
+        }
+
+        class Enemy extends Car {
+            constructor(x, y) {
+                super(x, y, '#E5E7EB');
+                this.isEnemy = true;
+                // POLÍCIA UM POUCO MAIS LENTA QUE O PLAYER
+                this.maxSpeed = 11.5; 
+                this.acceleration = 0.2;
+                this.friction = 0.96;
+                this.turnSpeed = 0.05;
+                this.health = 30;
+            }
+
+            update(targetX, targetY) {
+                let dx = targetX - this.x; let dy = targetY - this.y;
+                let targetAngle = Math.atan2(dy, dx);
+                let diff = targetAngle - this.angle;
+                
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                
+                this.angle += Math.sign(diff) * Math.min(Math.abs(diff), this.turnSpeed);
+                
+                this.speed += this.acceleration;
+                this.speed *= this.friction;
+                if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
+
+                moveWithCollision(this, this.speed);
+            }
+        }
+
+        // Variáveis Globais do Motor
+        let player;
+        let enemies = [];
+        let skidmarks = [];
+        let buildings = [];
+        let camera = { x: 0, y: 0 };
+
+        // Geração da Cidade (Grid)
+        function generateCity() {
+            buildings = [];
+            for(let x = 0; x < WORLD_WIDTH; x += BLOCK_SIZE + STREET_WIDTH) {
+                for(let y = 0; y < WORLD_HEIGHT; y += BLOCK_SIZE + STREET_WIDTH) {
+                    // Pula o spawn point do player para criar uma praça
+                    if (x > WORLD_WIDTH/2 - 500 && x < WORLD_WIDTH/2 + 200 &&
+                        y > WORLD_HEIGHT/2 - 500 && y < WORLD_HEIGHT/2 + 200) continue;
+                    
+                    // Ajuste estético dos blocos
+                    const bWidth = BLOCK_SIZE;
+                    const bHeight = BLOCK_SIZE;
+                    buildings.push({
+                        x: x + STREET_WIDTH/2, 
+                        y: y + STREET_WIDTH/2, 
+                        w: bWidth, 
+                        h: bHeight,
+                        color: `hsl(${200 + Math.random()*40}, 20%, ${10 + Math.random()*15}%)`,
+                        accent: Math.random() > 0.7 ? '#FF007F' : '#00FFFF' // Neon accents
+                    });
+                }
+            }
+        }
+
+        // Movimentação com Colisão de Deslizamento (Sliding)
+        function checkBuildingCollision(nx, ny, r) {
+            for(let b of buildings) {
+                if(nx + r > b.x && nx - r < b.x + b.w && ny + r > b.y && ny - r < b.y + b.h) return true;
+            }
+            if (nx - r < 0 || nx + r > WORLD_WIDTH || ny - r < 0 || ny + r > WORLD_HEIGHT) return true;
+            return false;
+        }
+
+        function moveWithCollision(entity, speed) {
+            let nx = entity.x + Math.cos(entity.angle) * speed;
+            let ny = entity.y + Math.sin(entity.angle) * speed;
+
+            // Tenta mover X
+            if (!checkBuildingCollision(nx, entity.y, entity.radius)) {
+                entity.x = nx;
+            } else {
+                entity.speed *= 0.8; // Perde velocidade ao raspar
+            }
+            // Tenta mover Y
+            if (!checkBuildingCollision(entity.x, ny, entity.radius)) {
+                entity.y = ny;
+            } else {
+                entity.speed *= 0.8;
+            }
+        }
+
+        function spawnEnemy() {
+            let angle = Math.random() * Math.PI * 2;
+            let distance = 1000;
+            let ex = player.x + Math.cos(angle) * distance;
+            let ey = player.y + Math.sin(angle) * distance;
+            ex = Math.max(200, Math.min(WORLD_WIDTH-200, ex));
+            ey = Math.max(200, Math.min(WORLD_HEIGHT-200, ey));
+            // Evita spawnar dentro de prédio
+            if (!checkBuildingCollision(ex, ey, 40)) {
+                enemies.push(new Enemy(ex, ey));
+            }
+        }
+
+        function checkCarCollisions() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                let dx = player.x - e.x; let dy = player.y - e.y;
+                let dist = Math.hypot(dx, dy);
+                let minDist = player.radius + e.radius;
+
+                if (dist < minDist) {
+                    let overlap = minDist - dist;
+                    let nx = dx / dist; let ny = dy / dist;
+
+                    player.x += nx * overlap * 0.5; player.y += ny * overlap * 0.5;
+                    e.x -= nx * overlap * 0.5; e.y -= ny * overlap * 0.5;
+
+                    player.speed *= 0.6; e.speed *= 0.2;
+                    
+                    player.health -= 10; e.health -= 20;
+                    updateHUD();
+
+                    if (e.health <= 0) enemies.splice(i, 1);
+                    if (player.health <= 0) { endGame(false); return; }
+                }
+            }
+        }
+
+        function updateHUD() {
+            let hp = Math.max(0, player.health);
+            let fill = document.getElementById('health-bar-fill');
+            fill.style.width = `${hp}%`;
+            fill.style.backgroundColor = hp > 50 ? '#54B435' : hp > 25 ? '#FFD700' : '#C8102E';
+
+            document.getElementById('timer-display').innerText = Math.max(0, gameTime).toFixed(1);
+        }
+
+        // Renderização do Mundo 3D Parallax
+        function drawWorld(ctx) {
+            // Asfalto Base
+            ctx.fillStyle = '#111318';
+            ctx.fillRect(camera.x, camera.y, GAME_WIDTH, GAME_HEIGHT);
+
+            // Desenho dos Prédios com Parallax
+            let cx = camera.x + GAME_WIDTH/2;
+            let cy = camera.y + GAME_HEIGHT/2;
+
+            buildings.forEach(b => {
+                // Renderizar apenas se estiver na tela
+                if (b.x + b.w > camera.x - 200 && b.x < camera.x + GAME_WIDTH + 200 &&
+                    b.y + b.h > camera.y - 200 && b.y < camera.y + GAME_HEIGHT + 200) {
+                    
+                    // Cálculo do Parallax (Altura)
+                    let dx = (b.x + b.w/2 - cx) * 0.15;
+                    let dy = (b.y + b.h/2 - cy) * 0.15;
+
+                    // Base / Sombra
+                    ctx.fillStyle = '#050505';
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+                    // Paredes Laterais (Fake 3D)
+                    ctx.fillStyle = '#1A1C23';
+                    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x+dx, b.y+dy); ctx.lineTo(b.x+b.w+dx, b.y+dy); ctx.lineTo(b.x+b.w, b.y); ctx.fill(); // Top
+                    ctx.beginPath(); ctx.moveTo(b.x, b.y+b.h); ctx.lineTo(b.x+dx, b.y+b.h+dy); ctx.lineTo(b.x+b.w+dx, b.y+b.h+dy); ctx.lineTo(b.x+b.w, b.y+b.h); ctx.fill(); // Bottom
+                    ctx.fillStyle = '#15171D';
+                    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x+dx, b.y+dy); ctx.lineTo(b.x+dx, b.y+b.h+dy); ctx.lineTo(b.x, b.y+b.h); ctx.fill(); // Left
+                    ctx.beginPath(); ctx.moveTo(b.x+b.w, b.y); ctx.lineTo(b.x+b.w+dx, b.y+dy); ctx.lineTo(b.x+b.w+dx, b.y+b.h+dy); ctx.lineTo(b.x+b.w, b.y+b.h); ctx.fill(); // Right
+
+                    // Teto (Roof)
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x+dx, b.y+dy, b.w, b.h);
+                    
+                    // Borda Neon (Estilo Vice City)
+                    ctx.strokeStyle = b.accent;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(b.x+dx, b.y+dy, b.w, b.h);
+                }
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'playing') return;
+
+            let dt = (timestamp - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; 
+            lastTime = timestamp;
+
+            gameTime -= dt;
+            updateHUD();
+
+            if (gameTime <= 0) { endGame(true); return; }
+
+            // Ajuste na curva de spawn para 25 segundos
+            let maxEnemies = 4 + Math.floor((25 - gameTime) / 4); 
+            if (enemies.length < maxEnemies && Math.random() < 0.05) spawnEnemy();
+
+            player.update(keys);
+            enemies.forEach(e => e.update(player.x, player.y));
+            checkCarCollisions();
+
+            skidmarks.forEach(s => s.life -= 0.01);
+            skidmarks = skidmarks.filter(s => s.life > 0);
+
+            // Atualizar Câmara
+            let targetCamX = player.x - GAME_WIDTH / 2;
+            let targetCamY = player.y - GAME_HEIGHT / 2;
+            camera.x += (targetCamX - camera.x) * 0.1;
+            camera.y += (targetCamY - camera.y) * 0.1;
+            camera.x = Math.max(0, Math.min(WORLD_WIDTH - GAME_WIDTH, camera.x));
+            camera.y = Math.max(0, Math.min(WORLD_HEIGHT - GAME_HEIGHT, camera.y));
+
+            // Desenhar
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            drawWorld(ctx);
+
+            // Desenhar Marcas de Pneu
+            skidmarks.forEach(s => {
+                ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2);
+                ctx.strokeStyle = `rgba(0, 0, 0, ${s.life * 0.6})`;
+                ctx.lineWidth = 6; ctx.stroke();
+            });
+
+            enemies.forEach(e => e.draw(ctx));
+            player.draw(ctx);
+
+            ctx.restore();
+            reqAnimFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame(brand, color) {
+            generateCity();
+            player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, color);
+            enemies = []; skidmarks = [];
+            camera.x = player.x - GAME_WIDTH / 2; camera.y = player.y - GAME_HEIGHT / 2;
+            
+            gameTime = 25.0; // Novo tempo de jogo de 25s
+            gameState = 'playing';
+            
+            document.getElementById('menu-overlay').classList.add('hidden');
+            document.getElementById('game-over-overlay').classList.add('hidden');
+            document.getElementById('victory-overlay').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            
+            for (let k in keys) keys[k] = false;
+            updateHUD();
+            
+            lastTime = performance.now();
+            cancelAnimationFrame(reqAnimFrame);
+            reqAnimFrame = requestAnimationFrame(gameLoop);
+            
+            document.getElementById('game-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function endGame(isVictory) {
+            gameState = isVictory ? 'victory' : 'gameover';
+            document.getElementById('hud').classList.add('hidden');
+            
+            if (isVictory) {
+                document.getElementById('victory-overlay').classList.remove('hidden');
+                let end = Date.now() + 3000;
+                (function frame() {
+                    confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FF6500', '#00FFFF', '#FF007F'] });
+                    confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FF6500', '#00FFFF', '#FF007F'] });
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                }());
+            } else {
+                document.getElementById('game-over-overlay').classList.remove('hidden');
+            }
+        }
+
+        function showMenu() {
+            gameState = 'menu';
+            document.getElementById('game-over-overlay').classList.add('hidden');
+            document.getElementById('victory-overlay').classList.add('hidden');
+            document.getElementById('menu-overlay').classList.remove('hidden');
+            ctx.fillStyle = "#0A0B0E"; ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        }
+
+        // Inicia Menu
+        showMenu();
+    </script>
+</body>
+</html>
