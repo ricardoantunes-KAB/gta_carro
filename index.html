@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="pt-PT" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaBuM! Grand Theft Delivery - Fuga de 25 Segundos</title>
+    
+    <!-- Tailwind CSS Seguro -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-kabum': '#FF6500',
+                        'brand-playstation': '#FFFFFF',
+                        'brand-intel': '#0071C5',
+                        'brand-acer': '#82B541',
+                        'gta-pink': '#FF007F',
+                        'gta-cyan': '#00FFFF',
+                        'gta-green': '#54B435',
+                        'city-dark': '#0A0B0E',
+                        'city-accent': '#1A1C23'
+                    },
+                    fontFamily: {
+                        'outfit': ['Outfit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.cdnfonts.com/css/pricedown');
+
+        body {
+            background-color: #0A0B0E;
+            color: #ffffff;
+            overflow-x: hidden;
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .font-gta { font-family: 'Pricedown', 'Impact', sans-serif; }
+
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            aspect-ratio: 16/9;
+            background-color: #111318;
+            border: 6px solid #FF6500;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(255, 101, 0, 0.3), 0 0 100px rgba(255, 0, 127, 0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10, 11, 14, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .hidden { display: none !important; }
+
+        #hud {
+            position: absolute;
+            top: 20px; left: 30px; right: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-timer {
+            font-family: 'Pricedown', sans-serif;
+            font-size: 4.5rem;
+            color: #FF007F;
+            text-shadow: 3px 3px 0 #000, 0 0 15px rgba(255,0,127,0.5);
+            line-height: 1;
+            margin-top: -10px;
+        }
+
+        .wanted-stars {
+            font-size: 2.5rem;
+            color: #FFD700;
+            text-shadow: 0 0 10px #FFD700;
+            letter-spacing: 5px;
+        }
+
+        .health-bar-container {
+            width: 250px;
+            height: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 3px solid #000;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        #health-bar-fill {
+            width: 100%;
+            height: 100%;
+            background: #54B435;
+            transition: width 0.2s;
+        }
+
+        .center-msg {
+            font-family: 'Pricedown', sans-serif;
+            font-size: 7rem;
+            text-align: center;
+            text-shadow: 4px 4px 0 #000;
+            text-transform: uppercase;
+            margin: 0;
+        }
+        .wasted { color: #C8102E; }
+        .passed { color: #54B435; }
+
+        .car-card { transition: transform 0.2s; cursor: pointer; }
+        .car-card:hover { transform: translateY(-5px) scale(1.02); }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="selection:bg-pink-600 selection:text-white">
+
+    <header class="bg-black border-b-[6px] border-[#FF6500] sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-[1400px] mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-3xl md:text-4xl font-gta text-white">
+                KaBuM! <span style="color: #FF6500;">Delivery</span>
+            </h1>
+        </div>
+    </header>
+
+    <main>
+        <section class="relative py-20 md:py-28 overflow-hidden" style="background: linear-gradient(135deg, #FF6500 0%, #FF007F 50%, #001A33 100%);">
+            <div class="absolute inset-0 bg-black/60 z-0"></div>
+            <div class="absolute inset-0 z-0 opacity-30" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 50px 50px;"></div>
+            
+            <div class="relative max-w-5xl mx-auto px-4 text-center z-10">
+                <h2 class="text-6xl md:text-8xl font-gta mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 drop-shadow-[0_5px_5px_rgba(0,0,0,1)]">
+                    Sobreviva <span style="color: #00FFFF;">25 Segundos</span>
+                </h2>
+                <p class="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
+                    O maior roubo de descontos da cidade. Escolha sua van, use as <strong>SETAS PARA ACELERAR</strong>, fuja da polícia e garanta o seu prêmio VIP.
+                </p>
+                <a href="#game-section" class="inline-block bg-[#FF6500] hover:bg-orange-600 text-white font-black py-4 px-10 rounded text-xl uppercase tracking-widest transition-transform transform hover:scale-105 shadow-[0_0_20px_rgba(255,101,0,0.6)]">
+                    Iniciar Missão
+                </a>
+            </div>
+        </section>
+
+        <section id="game-section" class="py-16 bg-[#0a0a0a]">
+            <div id="game-wrapper">
+                <canvas id="gameCanvas" width="1280" height="720" tabindex="1"></canvas>
+
+                <div id="hud" class="hidden">
+                    <div>
+                        <div class="text-sm text-white font-black uppercase tracking-widest mb-1 drop-shadow-md">Nível de Procurado</div>
+                        <div class="wanted-stars">★★★★★</div>
+                    </div>
+                    <div class="text-center absolute left-1/2 transform -translate-x-1/2">
+                        <div class="text-sm text-white font-black uppercase tracking-widest drop-shadow-md">Tempo de Fuga</div>
+                        <div id="timer-display" class="hud-timer">25.0</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-white font-black uppercase tracking-widest mb-1 drop-shadow-md">Blindagem</div>
+                        <div class="health-bar-container float-right">
+                            <div id="health-bar-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="menu-overlay" class="overlay">
+                    <h3 class="text-5xl md:text-7xl font-gta mb-4 text-white drop-shadow-lg text-center mt-10">Escolha a sua Frota</h3>
+                    <p class="text-gray-300 text-lg mb-10 font-bold bg-black/50 px-6 py-2 rounded-full border border-white/10">Clique em uma marca. Use a <strong>SETA P/ CIMA</strong> ou <strong>W</strong> para Acelerar.</p>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 px-4 w-full max-w-4xl">
+                        <!-- KaBuM! -->
+                        <div class="car-card bg-[#1A1C23] border-4 border-[#FF6500] rounded-xl p-6 flex flex-col items-center" onclick="startGame('kabum', '#FF6500')">
+                            <div class="w-16 h-24 mb-4 bg-[#FF6500] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">KaBuM!</span>
+                        </div>
+                        <!-- PlayStation -->
+                        <div class="car-card bg-[#1A1C23] border-4 border-[#FFFFFF] rounded-xl p-6 flex flex-col items-center" onclick="startGame('playstation', '#FFFFFF')">
+                            <div class="w-16 h-24 mb-4 bg-[#FFFFFF] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">PlayStation</span>
+                        </div>
+                        <!-- Intel -->
+                        <div class="car-card bg-[#1A1C23] border-4 border-[#0071C5] rounded-xl p-6 flex flex-col items-center" onclick="startGame('intel', '#0071C5')">
+                            <div class="w-16 h-24 mb-4 bg-[#0071C5] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">Intel</span>
+                        </div>
+                        <!-- Acer -->
+                        <div class="car-card bg-[#1A1C23] border-4 border-[#82B541] rounded-xl p-6 flex flex-col items-center" onclick="startGame('acer', '#82B541')">
+                            <div class="w-16 h-24 mb-4 bg-[#82B541] rounded-sm relative shadow-lg">
+                                <div class="absolute top-4 left-1 right-1 h-5 bg-black rounded-sm"></div>
+                                <div class="absolute bottom-4 left-1 right-1 h-4 bg-black rounded-sm"></div>
+                            </div>
+                            <span class="font-black text-white text-xl uppercase tracking-widest">Acer</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="game-over-overlay" class="overlay hidden" style="background-color: rgba(100, 0, 0, 0.95);">
+                    <h3 class="center-msg wasted">WASTED</h3>
+                    <p class="text-gray-300 text-xl mb-10 text-center px-4 font-bold mt-4">A polícia amassou você. O desconto foi apreendido.</p>
+                    <button onclick="showMenu()" class="bg-white text-red-900 font-black py-4 px-10 rounded text-xl uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-xl">
+                        Tentar Novamente
+                    </button>
+                </div>
+
+                <div id="victory-overlay" class="overlay hidden border-4 border-[#54B435]" style="background-color: rgba(0, 0, 0, 0.95);">
+                    <h3 class="center-msg passed">MISSION PASSED!</h3>
+                    <p class="text-[#54B435] text-2xl mb-8 text-center px-4 font-bold uppercase tracking-widest mt-4">Respeito +</p>
+                    
+                    <div class="bg-[#1A1C23] p-8 rounded border-2 border-[#00FFFF] text-center mb-10 shadow-[0_0_30px_rgba(0,255,255,0.2)]">
+                        <p class="text-gray-400 text-sm uppercase font-bold mb-3 tracking-widest">Prêmio de Fuga</p>
+                        <div class="bg-black text-white text-5xl px-10 py-4 rounded border border-gray-600 select-all tracking-wider font-gta">
+                            KABUM<span style="color:#FF6500;">VIP25</span>
+                        </div>
+                        <p class="text-gray-500 text-xs mt-4 uppercase font-bold">Copie o código. Use com sabedoria.</p>
+                    </div>
+
+                    <button onclick="showMenu()" class="bg-[#54B435] text-black font-black py-4 px-10 rounded text-xl uppercase tracking-widest hover:bg-green-400 transition-colors shadow-xl">
+                        Novo Roubo
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GAME_WIDTH = 1280;
+        const GAME_HEIGHT = 720;
+        
+        // Mundo de Jogo (Cidade Menor e Mais Densa para referência visual constante)
+        const WORLD_WIDTH = 4200;
+        const WORLD_HEIGHT = 4200;
+        const BLOCK_SIZE = 450;
+        const STREET_WIDTH = 250;
+
+        let gameState = 'menu';
+        let lastTime = 0;
+        let gameTime = 25.0; // 25 Segundos
+        let reqAnimFrame;
+
+        // --- SISTEMA BLINDADO DE TECLADO ---
+        const keys = {};
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            keys[e.key] = true;
+            if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault(); 
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            keys[e.key] = false;
+        });
+
+        class Car {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.width = 46; this.height = 85;
+                this.color = color;
+                this.angle = -Math.PI / 2;
+                this.speed = 0;
+                this.radius = 38;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(-this.height/2 + 5, -this.width/2 + 5, this.height, this.width);
+
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); 
+                if(ctx.roundRect) {
+                    ctx.roundRect(-this.height/2, -this.width/2, this.height, this.width, 4); 
+                } else {
+                    ctx.rect(-this.height/2, -this.width/2, this.height, this.width);
+                }
+                ctx.fill();
+                
+                ctx.fillStyle = "#111";
+                ctx.fillRect(this.height/2 - 25, -this.width/2 + 4, 12, this.width - 8); 
+                ctx.fillRect(-this.height/2 + 10, -this.width/2 + 6, 8, this.width - 12); 
+                
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.fillRect(-this.height/2 + 20, -this.width/2 + 6, 25, this.width - 12);
+
+                if (this.isEnemy) {
+                    ctx.fillStyle = "#111"; 
+                    ctx.fillRect(-this.height/4, -this.width/2 + 2, this.height/2, this.width - 4);
+                    let time = performance.now();
+                    ctx.fillStyle = Math.floor(time/150)%2===0 ? "#FF0000" : "#0000FF";
+                    ctx.fillRect(this.height/4, -10, 8, 20);
+                } else {
+                    ctx.fillStyle = "rgba(255, 255, 150, 0.8)";
+                    ctx.fillRect(this.height/2 - 2, -this.width/2 + 4, 4, 10);
+                    ctx.fillRect(this.height/2 - 2, this.width/2 - 14, 4, 10);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class Player extends Car {
+            constructor(x, y, color) {
+                super(x, y, color);
+                this.isEnemy = false;
+                this.health = 100;
+                this.maxSpeed = 14.0; // Velocidade máxima aumentada
+                this.acceleration = 0.4; // Aceleração forte e responsiva
+                this.friction = 0.95;
+                this.turnSpeed = 0.07;
+            }
+
+            update() {
+                // Checagem universal para garantir que o carro arranca
+                let up = keys['ArrowUp'] || keys['Up'] || keys['w'] || keys['W'] || keys['KeyW'];
+                let down = keys['ArrowDown'] || keys['Down'] || keys['s'] || keys['S'] || keys['KeyS'];
+                let left = keys['ArrowLeft'] || keys['Left'] || keys['a'] || keys['A'] || keys['KeyA'];
+                let right = keys['ArrowRight'] || keys['Right'] || keys['d'] || keys['D'] || keys['KeyD'];
+
+                if (up) this.speed += this.acceleration;
+                else if (down) this.speed -= this.acceleration * 0.8;
+                
+                this.speed *= this.friction;
+                this.speed = Math.max(-this.maxSpeed/2, Math.min(this.maxSpeed, this.speed));
+
+                // O carro só vira se estiver em movimento
+                if (Math.abs(this.speed) > 0.5) {
+                    const dir = this.speed > 0 ? 1 : -1;
+                    const turnAmount = this.turnSpeed * Math.min((Math.abs(this.speed) / this.maxSpeed) + 0.3, 1);
+                    if (left) this.angle -= turnAmount * dir;
+                    if (right) this.angle += turnAmount * dir;
+                }
+
+                // Marcas de derrapagem (Drift) visual
+                if (Math.abs(this.speed) > 6 && (left || right || down)) {
+                    const bx = this.x - Math.cos(this.angle) * (this.height/2 - 10);
+                    const by = this.y - Math.sin(this.angle) * (this.height/2 - 10);
+                    const wx = Math.cos(this.angle + Math.PI/2) * (this.width/2 - 5);
+                    const wy = Math.sin(this.angle + Math.PI/2) * (this.width/2 - 5);
+                    skidmarks.push({ x1: bx+wx, y1: by+wy, x2: bx-wx, y2: by-wy, life: 1.0 });
+                }
+
+                moveWithCollision(this, this.speed);
+            }
+        }
+
+        class Enemy extends Car {
+            constructor(x, y) {
+                super(x, y, '#E5E7EB');
+                this.isEnemy = true;
+                this.maxSpeed = 13.0; // Inimigos levemente mais lentos
+                this.acceleration = 0.3;
+                this.friction = 0.96;
+                this.turnSpeed = 0.055;
+                this.health = 30;
+            }
+
+            update(targetX, targetY) {
+                let dx = targetX - this.x; let dy = targetY - this.y;
+                let targetAngle = Math.atan2(dy, dx);
+                let diff = targetAngle - this.angle;
+                
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                
+                this.angle += Math.sign(diff) * Math.min(Math.abs(diff), this.turnSpeed);
+                
+                this.speed += this.acceleration;
+                this.speed *= this.friction;
+                if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
+
+                moveWithCollision(this, this.speed);
+            }
+        }
+
+        let player;
+        let enemies = [];
+        let skidmarks = [];
+        let buildings = [];
+        let camera = { x: 0, y: 0 };
+
+        function generateCity() {
+            buildings = [];
+            // O mapa agora é preenchido com prédios, sem a "praça vazia" no meio.
+            for(let x = 0; x < WORLD_WIDTH; x += BLOCK_SIZE + STREET_WIDTH) {
+                for(let y = 0; y < WORLD_HEIGHT; y += BLOCK_SIZE + STREET_WIDTH) {
+                    buildings.push({
+                        x: x + STREET_WIDTH/2, 
+                        y: y + STREET_WIDTH/2, 
+                        w: BLOCK_SIZE, 
+                        h: BLOCK_SIZE,
+                        color: `hsl(${200 + Math.random()*40}, 20%, ${10 + Math.random()*15}%)`,
+                        accent: Math.random() > 0.7 ? '#FF007F' : '#00FFFF' 
+                    });
+                }
+            }
+        }
+
+        function checkBuildingCollision(nx, ny, r) {
+            for(let b of buildings) {
+                if(nx + r > b.x && nx - r < b.x + b.w && ny + r > b.y && ny - r < b.y + b.h) return true;
+            }
+            if (nx - r < 0 || nx + r > WORLD_WIDTH || ny - r < 0 || ny + r > WORLD_HEIGHT) return true;
+            return false;
+        }
+
+        function moveWithCollision(entity, speed) {
+            let nx = entity.x + Math.cos(entity.angle) * speed;
+            let ny = entity.y + Math.sin(entity.angle) * speed;
+
+            if (!checkBuildingCollision(nx, entity.y, entity.radius)) entity.x = nx;
+            else entity.speed *= 0.8;
+            
+            if (!checkBuildingCollision(entity.x, ny, entity.radius)) entity.y = ny;
+            else entity.speed *= 0.8;
+        }
+
+        function spawnEnemy() {
+            let angle = Math.random() * Math.PI * 2;
+            let distance = 1000;
+            let ex = player.x + Math.cos(angle) * distance;
+            let ey = player.y + Math.sin(angle) * distance;
+            ex = Math.max(200, Math.min(WORLD_WIDTH-200, ex));
+            ey = Math.max(200, Math.min(WORLD_HEIGHT-200, ey));
+            if (!checkBuildingCollision(ex, ey, 40)) {
+                enemies.push(new Enemy(ex, ey));
+            }
+        }
+
+        function checkCarCollisions() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                let dx = player.x - e.x; let dy = player.y - e.y;
+                let dist = Math.hypot(dx, dy);
+                let minDist = player.radius + e.radius;
+
+                if (dist < minDist) {
+                    let overlap = minDist - dist;
+                    let nx = dx / dist; let ny = dy / dist;
+
+                    player.x += nx * overlap * 0.5; player.y += ny * overlap * 0.5;
+                    e.x -= nx * overlap * 0.5; e.y -= ny * overlap * 0.5;
+
+                    player.speed *= 0.6; e.speed *= 0.2;
+                    
+                    player.health -= 15; e.health -= 25;
+                    updateHUD();
+
+                    if (e.health <= 0) enemies.splice(i, 1);
+                    if (player.health <= 0) { endGame(false); return; }
+                }
+            }
+        }
+
+        function updateHUD() {
+            let hp = Math.max(0, player.health);
+            let fill = document.getElementById('health-bar-fill');
+            fill.style.width = `${hp}%`;
+            fill.style.backgroundColor = hp > 50 ? '#54B435' : hp > 25 ? '#FFD700' : '#C8102E';
+            document.getElementById('timer-display').innerText = Math.max(0, gameTime).toFixed(1);
+        }
+
+        function drawWorld(ctx) {
+            // Asfalto
+            ctx.fillStyle = '#111318';
+            ctx.fillRect(camera.x, camera.y, GAME_WIDTH, GAME_HEIGHT);
+
+            // A MÁGICA VISUAL: Desenhar a grade da rua no asfalto para perceber o movimento!
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 6;
+            ctx.setLineDash([40, 40]);
+            
+            let startX = Math.floor(camera.x / (BLOCK_SIZE + STREET_WIDTH)) * (BLOCK_SIZE + STREET_WIDTH);
+            let startY = Math.floor(camera.y / (BLOCK_SIZE + STREET_WIDTH)) * (BLOCK_SIZE + STREET_WIDTH);
+
+            for(let x = startX; x < camera.x + GAME_WIDTH + (BLOCK_SIZE + STREET_WIDTH); x += BLOCK_SIZE + STREET_WIDTH) {
+                ctx.beginPath(); ctx.moveTo(x + STREET_WIDTH/2, camera.y); ctx.lineTo(x + STREET_WIDTH/2, camera.y + GAME_HEIGHT); ctx.stroke();
+            }
+            for(let y = startY; y < camera.y + GAME_HEIGHT + (BLOCK_SIZE + STREET_WIDTH); y += BLOCK_SIZE + STREET_WIDTH) {
+                ctx.beginPath(); ctx.moveTo(camera.x, y + STREET_WIDTH/2); ctx.lineTo(camera.x + GAME_WIDTH, y + STREET_WIDTH/2); ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // Prédios 3D
+            let cx = camera.x + GAME_WIDTH/2;
+            let cy = camera.y + GAME_HEIGHT/2;
+
+            buildings.forEach(b => {
+                if (b.x + b.w > camera.x - 200 && b.x < camera.x + GAME_WIDTH + 200 &&
+                    b.y + b.h > camera.y - 200 && b.y < camera.y + GAME_HEIGHT + 200) {
+                    
+                    let dx = (b.x + b.w/2 - cx) * 0.15;
+                    let dy = (b.y + b.h/2 - cy) * 0.15;
+
+                    ctx.fillStyle = '#050505';
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+                    ctx.fillStyle = '#1A1C23';
+                    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x+dx, b.y+dy); ctx.lineTo(b.x+b.w+dx, b.y+dy); ctx.lineTo(b.x+b.w, b.y); ctx.fill(); 
+                    ctx.beginPath(); ctx.moveTo(b.x, b.y+b.h); ctx.lineTo(b.x+dx, b.y+b.h+dy); ctx.lineTo(b.x+b.w+dx, b.y+b.h+dy); ctx.lineTo(b.x+b.w, b.y+b.h); ctx.fill(); 
+                    ctx.fillStyle = '#15171D';
+                    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x+dx, b.y+dy); ctx.lineTo(b.x+dx, b.y+b.h+dy); ctx.lineTo(b.x, b.y+b.h); ctx.fill(); 
+                    ctx.beginPath(); ctx.moveTo(b.x+b.w, b.y); ctx.lineTo(b.x+b.w+dx, b.y+dy); ctx.lineTo(b.x+b.w+dx, b.y+b.h+dy); ctx.lineTo(b.x+b.w, b.y+b.h); ctx.fill(); 
+
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x+dx, b.y+dy, b.w, b.h);
+                    ctx.strokeStyle = b.accent;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(b.x+dx, b.y+dy, b.w, b.h);
+                }
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'playing') return;
+
+            let dt = (timestamp - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; 
+            lastTime = timestamp;
+
+            gameTime -= dt;
+            updateHUD();
+
+            if (gameTime <= 0) { endGame(true); return; }
+
+            let maxEnemies = 4 + Math.floor((25 - gameTime) / 4); 
+            if (enemies.length < maxEnemies && Math.random() < 0.05) spawnEnemy();
+
+            player.update();
+            enemies.forEach(e => e.update(player.x, player.y));
+            checkCarCollisions();
+
+            skidmarks.forEach(s => s.life -= 0.01);
+            skidmarks = skidmarks.filter(s => s.life > 0);
+
+            let targetCamX = player.x - GAME_WIDTH / 2;
+            let targetCamY = player.y - GAME_HEIGHT / 2;
+            camera.x += (targetCamX - camera.x) * 0.1;
+            camera.y += (targetCamY - camera.y) * 0.1;
+            camera.x = Math.max(0, Math.min(WORLD_WIDTH - GAME_WIDTH, camera.x));
+            camera.y = Math.max(0, Math.min(WORLD_HEIGHT - GAME_HEIGHT, camera.y));
+
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            drawWorld(ctx);
+
+            skidmarks.forEach(s => {
+                ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2);
+                ctx.strokeStyle = `rgba(0, 0, 0, ${s.life * 0.6})`;
+                ctx.lineWidth = 6; ctx.stroke();
+            });
+
+            enemies.forEach(e => e.draw(ctx));
+            player.draw(ctx);
+
+            ctx.restore();
+            reqAnimFrame = requestAnimationFrame(gameLoop);
+        }
+
+        window.startGame = function(brand, color) {
+            generateCity();
+            
+            // Player nasce exatamente no centro exato de um cruzamento
+            player = new Player(2100, 2100, color);
+            enemies = []; skidmarks = [];
+            camera.x = player.x - GAME_WIDTH / 2; camera.y = player.y - GAME_HEIGHT / 2;
+            
+            gameTime = 25.0; // 25 Segundos de jogo
+            gameState = 'playing';
+            
+            document.getElementById('menu-overlay').classList.add('hidden');
+            document.getElementById('game-over-overlay').classList.add('hidden');
+            document.getElementById('victory-overlay').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            
+            canvas.focus(); 
+            
+            for (let k in keys) keys[k] = false;
+            updateHUD();
+            
+            lastTime = performance.now();
+            cancelAnimationFrame(reqAnimFrame);
+            reqAnimFrame = requestAnimationFrame(gameLoop);
+            
+            document.getElementById('game-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        window.showMenu = function() {
+            gameState = 'menu';
+            document.getElementById('game-over-overlay').classList.add('hidden');
+            document.getElementById('victory-overlay').classList.add('hidden');
+            document.getElementById('menu-overlay').classList.remove('hidden');
+            ctx.fillStyle = "#0A0B0E"; ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        }
+
+        window.endGame = function(isVictory) {
+            gameState = isVictory ? 'victory' : 'gameover';
+            document.getElementById('hud').classList.add('hidden');
+            
+            if (isVictory) {
+                document.getElementById('victory-overlay').classList.remove('hidden');
+                let end = Date.now() + 3000;
+                (function frame() {
+                    confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FF6500', '#00FFFF', '#FF007F'] });
+                    confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FF6500', '#00FFFF', '#FF007F'] });
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                }());
+            } else {
+                document.getElementById('game-over-overlay').classList.remove('hidden');
+            }
+        }
+
+        showMenu();
+    </script>
+</body>
+</html>
